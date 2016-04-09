@@ -1,0 +1,210 @@
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>图表页面</title>
+</head>
+<body>
+<style type="text/css">
+	body{
+		font-family:'微软雅黑';
+	}
+	text{
+		text-anchor: middle;
+	}
+	#chart{
+		position:relative;
+	}
+	.legend{
+		position:absolute;
+		top:400px;
+		left:645px;
+		font-size:12px;
+	}
+	.legend .square{
+		display: inline-block;
+		width:46px;
+		height:24px;
+		background:#0099CB; 
+		border-radius: 4px;
+	}
+	.legend .square2{
+		margin-top:18px;
+		background:#9ECAE1;
+	}
+	.legend .text{
+		display:block;
+		position:absolute;
+		top:5px;
+		left:60px;
+		width:100px;
+	}
+	.legend .text2{
+		top:45px;
+	}
+</style>
+<div class='content'>
+	<div id='chart'>
+		<div class='legend'>
+			<div><span class='square square1'></span><span class="text">两本杂志均出现</span></div>
+			<div><span class='square square2'></span><span class="text text2">只在一本杂志出现</span></div>
+		</div>
+	</div>
+	
+</div>
+<script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script type="text/javascript">
+var width=1200,height=1200,radius=Math.min(width,height)/2;
+var max_num=6;
+var blank_num=0;
+var parts_num=1;
+var color=d3.scale.ordinal().range(['#0099CB','#08306B']);
+
+var arc=d3.svg.arc()
+	.innerRadius(0)
+	.outerRadius(function(d){
+		return parseInt((d.data.num/max_num)*radius)-30;
+	});
+var pie = d3.layout.pie()
+    .sort(function(a,b){
+    	if(b.num==blank_num || a.num==blank_num){
+    		return 1;
+    	}
+    	return a.num-b.num>0;
+    })
+    .value(function(d) { if(d.num==1){return 0.045;}else{return 30/parts_num}; });
+var outlineArc=d3.svg.arc()
+	.innerRadius(function(d){
+		return parseInt((d.data.num/max_num)*radius)-30;
+	})
+	.outerRadius(function(d){
+		return parseInt((d.data.num/max_num)*radius);
+	});
+
+var svg=d3.select('#chart').append('svg')
+	.attr('width',width)
+	.attr('height',height)
+	.append('g')
+	.attr('transform','translate('+width/2+','+height/2+')');
+
+d3.csv('author_rank.csv',function(error,data){
+	var pie_data=[];
+
+	data.forEach(function(d){
+		d.num=parseInt(d.num);
+	});
+	var all_num=0;
+	var last_num=0;
+	var last_index=1;
+	for(var i in data){
+		var cut=0;
+		if(last_num==data[i].num){
+			//cut=last_index*0.005;
+			last_index++;
+		}else{
+			last_num=data[i].num;
+			last_index=1;
+		}
+		if(data[i].isTwice=='是'){
+			pie_data.push({name:data[i].name,num:data[i].num-cut,isTwice:0});
+		}else{
+			pie_data.push({name:data[i].name,num:data[i].num-cut,isTwice:1});
+		}
+		all_num+=data[i].num-cut;
+		parts_num+=1;
+		last_num=data[i].num;
+	}
+	var g=svg.selectAll(".arc")
+      		.data(pie(pie_data))
+    		.enter().append("g")
+      		.attr("class", "arc");
+	
+		g.append('path')
+		.attr('class','outlineArc')
+		.attr('stroke','#fff')
+		.attr('stroke-width','1')
+		.attr('d',outlineArc)
+		.style('fill','#E0E0E0');
+
+	
+		g.append('path')
+		.attr('class','solidArc')
+		.attr('stroke','#fff')
+		.attr('stroke-width','1')
+		.attr('d',arc)
+		.style('fill',function(d){if(d.data.isTwice==0){return '#0099CB';}else{return '#9ECAE1';}});
+
+		g.append('text')
+		//.attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
+		.attr("transform", function(d,index) {
+			if (d.data.num==6){
+				if(index==1){
+					return "translate(" + arc.centroid(d) + "),rotate(-8)"; 
+				}else{
+					return "translate(" + arc.centroid(d) + "),rotate(-15)"; 
+				}
+			}else if(d.data.num==5){
+				 return "translate(" + arc.centroid(d) + "),rotate("+-index*15+")"; 
+			}else if(d.data.num==4){			
+				 return "translate(" + arc.centroid(d) + "),rotate("+-index*14+")"; 
+			}else if(d.data.num==3){
+				switch(index){
+					case 4:
+						return "translate(" + arc.centroid(d) + "),rotate("+-(index)*19+")"; 
+					case 5:
+						return "translate(" + arc.centroid(d) + "),rotate("+-(index)*13.5+")"; 
+					case 6:
+						return "translate(" + arc.centroid(d) + "),rotate("+-(index)*10+")"; 
+				}
+				 
+			}else if(d.data.num==2){
+				var dd={7:-80,8:-70,9:-60,10:-50,11:-35,12:-22,13:-12,14:0,15:14,16:30,17:45,18:55,19:65,20:75,21:85};
+				return "translate(" + arc.centroid(d) + "),rotate("+dd[index]+")"; 
+			}
+			
+		})
+		.attr("dy", "0.55em")
+		.style('fill','#fff')
+		.text(function(d,index){
+		 	if(d.data.num>1){// &&(index==1 || index==2 || index==3 || index==5 || index==14)
+		 		return d.data.num;
+		 	} 
+		});
+
+		g.append('text')
+		.attr("transform", function(d,index) {
+			if (d.data.num==6){
+				if(index==1){
+					return "translate(" + outlineArc.centroid(d) + "),rotate(-8)"; 
+				}else{
+					return "translate(" + outlineArc.centroid(d) + "),rotate(-15)"; 
+				}
+			}else if(d.data.num==5){
+				 return "translate(" + outlineArc.centroid(d) + "),rotate("+-index*15+")"; 
+			}else if(d.data.num==4){			
+				 return "translate(" + outlineArc.centroid(d) + "),rotate("+-index*14+")"; 
+			}else if(d.data.num==3){
+				switch(index){
+					case 4:
+						return "translate(" + outlineArc.centroid(d) + "),rotate("+-(index)*19+")"; 
+					case 5:
+						return "translate(" + outlineArc.centroid(d) + "),rotate("+-(index)*13.5+")"; 
+					case 6:
+						return "translate(" + outlineArc.centroid(d) + "),rotate("+-(index)*10+")"; 
+				}
+				 
+			}else if(d.data.num==2){
+				var dd={7:-80,8:-70,9:-60,10:-50,11:-35,12:-22,13:-12,14:0,15:14,16:30,17:45,18:55,19:65,20:75,21:85};
+				return "translate(" + outlineArc.centroid(d) + "),rotate("+dd[index]+")"; 
+			}
+			
+		})
+		.attr("dy", "0.35em")
+		.style('fill','#000')
+		.style('font-size','12px')
+		.text(function(d) { if(d.data.num>1){return d.data.name;}else{return '';} });
+});
+
+</script>
+</body>
+</html>
